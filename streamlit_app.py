@@ -1,3 +1,4 @@
+import streamlit as st
 import pdfplumber
 import pandas as pd
 import re
@@ -6,63 +7,76 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import joblib
 
-# مسار ملف PDF
-pdf_path = 'file:///C:/Users/Al-kc/Desktop/%E2%80%8E%E2%81%A8%D8%B0%D9%83%D8%A7%D8%A1%20%D8%A7%D8%B5%D8%B7%D9%86%D8%A7%D8%B9%D9%8A1%E2%81%A9.pdf'  # استبدل بهذا المسار الفعلي للملف
+# Streamlit app setup
+st.title("Student Performance Analysis using Machine Learning")
+st.write("""
+    This app analyzes student performance using machine learning.
+    It extracts data from a PDF file and processes it to build a classification model.
+""")
 
-# فتح ملف PDF واستخراج النصوص
-with pdfplumber.open(pdf_path) as pdf:
-    text = ""
-    for page in pdf.pages:
-        text += page.extract_text()  # استخراج النص من جميع الصفحات
+# Upload PDF file
+uploaded_file = st.file_uploader("Choose a PDF file to analyze data", type="pdf")
 
-# البيانات الوهمية المستخرجة من النص
-print("النص المستخرج من PDF:")
-print(text[:1000])  # طباعة أول 1000 حرف لمراجعة النص
+if uploaded_file is not None:
+    # Extract text from the uploaded PDF file
+    with pdfplumber.open(uploaded_file) as pdf:
+        text = ""
+        for page in pdf.pages:
+            text += page.extract_text()  # Extract text from all pages
 
-# --------------------------------------
-# تنظيم البيانات المستخرجة باستخدام pandas
-# --------------------------------------
+    # Display part of the extracted text for review
+    st.write("Extracted text from PDF:")
+    st.text(text[:1000])  # Display first 1000 characters for review
 
-# مثال على البيانات المستخرجة من النص
-data = {
-    "Student_ID": ["123", "124", "125"],
-    "Student_Name": ["Ali", "Sara", "Ahmed"],
-    "Total_Score": [97, 85, 92],
-    "Final_Exam_Score": [15, 14, 13],
-    "Practical_Score": [25, 23, 22],
-    "Participation": [10, 8, 9],
-}
+    # --------------------------------------
+    # Organizing the extracted data with pandas
+    # --------------------------------------
 
-df = pd.DataFrame(data)
+    # Example of extracted data from the text (customize based on actual data format)
+    data = {
+        "Student_ID": ["123", "124", "125"],
+        "Student_Name": ["Ali", "Sara", "Ahmed"],
+        "Total_Score": [97, 85, 92],
+        "Final_Exam_Score": [15, 14, 13],
+        "Practical_Score": [25, 23, 22],
+        "Participation": [10, 8, 9],
+    }
 
-# --------------------------------------
-# بناء نموذج تعلم الآلة
-# --------------------------------------
+    df = pd.DataFrame(data)
 
-# تحويل الأعمدة إلى قيم رقمية
-df['Total_Score'] = pd.to_numeric(df['Total_Score'])
-df['Final_Exam_Score'] = pd.to_numeric(df['Final_Exam_Score'])
-df['Practical_Score'] = pd.to_numeric(df['Practical_Score'])
-df['Participation'] = pd.to_numeric(df['Participation'])
+    # Display the extracted data in Streamlit
+    st.write("Extracted Data:")
+    st.dataframe(df)
 
-# تحديد المدخلات والهدف
-X = df[['Final_Exam_Score', 'Practical_Score', 'Participation']]  # المدخلات
-y = df['Total_Score'].apply(lambda x: 1 if x >= 90 else 0)  # التصنيف: 1 للطلاب المتفوقين، 0 لغير المتفوقين
+    # --------------------------------------
+    # Build Machine Learning Model
+    # --------------------------------------
 
-# تقسيم البيانات إلى مجموعة تدريب واختبار
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Convert columns to numeric values
+    df['Total_Score'] = pd.to_numeric(df['Total_Score'])
+    df['Final_Exam_Score'] = pd.to_numeric(df['Final_Exam_Score'])
+    df['Practical_Score'] = pd.to_numeric(df['Practical_Score'])
+    df['Participation'] = pd.to_numeric(df['Participation'])
 
-# تدريب نموذج RandomForest
-model = RandomForestClassifier(random_state=42)
-model.fit(X_train, y_train)
+    # Define features and target
+    X = df[['Final_Exam_Score', 'Practical_Score', 'Participation']]  # Features
+    y = df['Total_Score'].apply(lambda x: 1 if x >= 90 else 0)  # Target: 1 for excellent, 0 for others
 
-# التنبؤ بالنتائج باستخدام مجموعة الاختبار
-y_pred = model.predict(X_test)
+    # Split data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# تقييم النموذج
-accuracy = accuracy_score(y_test, y_pred)
-print(f"\nالدقة: {accuracy:.2f}")
-print("\nتقرير التصنيف:\n", classification_report(y_test, y_pred))
+    # Train the RandomForest model
+    model = RandomForestClassifier(random_state=42)
+    model.fit(X_train, y_train)
 
-# حفظ النموذج
-joblib.dump(model, 'student_performance_model.pkl')
+    # Predict the results using the test set
+    y_pred = model.predict(X_test)
+
+    # Evaluate the model
+    accuracy = accuracy_score(y_test, y_pred)
+
+    st.write(f"\nAccuracy: {accuracy:.2f}")
+    st.write("\nClassification Report:\n", classification_report(y_test, y_pred))
+
+    # Save the trained model
+    joblib.dump(model, 'student_performance_model.pkl')
